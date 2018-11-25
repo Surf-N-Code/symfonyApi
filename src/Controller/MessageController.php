@@ -40,7 +40,9 @@ class MessageController extends FOSRestController implements ClassResourceInterf
 
     /**
      * MessageController constructor.
-     * @param EntityManager $em
+     * @param EntityManagerInterface $em
+     * @param LoggerInterface $logger
+     * @param MessageRepository $messageRepo
      */
     public function __construct(EntityManagerInterface $em, LoggerInterface $logger, MessageRepository $messageRepo) {
         $this->em = $em;
@@ -58,6 +60,22 @@ class MessageController extends FOSRestController implements ClassResourceInterf
             throw new NotFoundHttpException();
         }
         return $message;
+    }
+
+    /**
+     * @param Message $message
+     */
+    private function incrementViews(Message $message) {
+        $message->setViews($message->getViews()+1);
+        $this->em->persist($message);
+        $this->em->flush();
+    }
+
+    private function isPostedInLast24Hours(Message $message) {
+        $now = new \DateTime('now');
+        $dayAgo = $now->modify('-1 day');
+        $messDate = new \DateTime($message->getPostedOn());
+        return ($messDate >= $dayAgo) ? true : false;
     }
 
     /**
@@ -81,32 +99,49 @@ class MessageController extends FOSRestController implements ClassResourceInterf
             $this->em->flush();
         } catch(ORMException $e) {
             $this->logger->error(
-                "Failed adding meessage to database". json_decode($e)
+                "Failed adding message to database". json_decode($e)
             );
         }
 
         return $this->view([
-            'status' => 'ok',
+            'status' => 'Message added successfully',
             ],
             Response::HTTP_CREATED
         );
     }
+
+
 
     /**
      * @param string $id
      * @return View
      */
     public function getAction(string $id) {
-        return $this->view($this->findMessageById($id));
+
+        $message = $this->findMessageById($id);
+        if($this->isPostedInLast24Hours($message)) {
+            $this->incrementViews($message);
+        }
+
+        return $this->view(
+            $message
+        );
     }
 
     /**
      * @return View
      */
-    public function cgetAction()
-    {
+    public function cgetAction() {
         return $this->view(
-            $this->messageRepo->findAll()
+            array_filter(
+                $this->messageRepo->findAll(),
+                function(Message $message) {
+                    if($this->isPostedInLast24Hours($message)) {
+                        $this->incrementViews($message);
+                        return $message;
+                    }
+                }
+            )
         );
     }
 
