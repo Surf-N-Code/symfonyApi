@@ -23,12 +23,24 @@ class Message
     /**
      * @ORM\Column(type="string", length=255)
      * @Assert\NotBlank()
+     * @Assert\Length(
+     *     min = 1,
+     *     max = 254,
+     *     minMessage = "Please enter at least {{ limit }} characters in your title",
+     *     maxMessage = "Please limit your title to {{ limit }} characters"
+     * )
      */
     private $title;
 
     /**
      * @ORM\Column(type="text")
      * @Assert\NotBlank()
+     * @Assert\Length(
+     *     min = 1,
+     *     max = 254,
+     *     minMessage = "Please enter at least {{ limit }} characters in your message",
+     *     maxMessage = "Please limit your message to {{ limit }} characters"
+     * )
      */
     private $content;
 
@@ -44,7 +56,7 @@ class Message
     private $postedOn;
 
     /**
-     * @ORM\OneToMany(targetEntity="App\Entity\Comment", mappedBy="message", orphanRemoval=true)
+     * @ORM\OneToMany(targetEntity="App\Entity\Comment", mappedBy="message", orphanRemoval=true, cascade={"persist"})
      */
     private $comments;
 
@@ -120,11 +132,11 @@ class Message
     }
 
     /**
-     * @return DateTime
+     * @return string
      */
     public function getPostedOn()
     {
-        return $this->postedOn;
+        return $this->postedOn->format(\DATE_ATOM);
     }
 
     /**
@@ -172,5 +184,12 @@ class Message
         }
 
         return $this;
+    }
+
+    /**
+     * @return int
+     */
+    public function getCommentCount() {
+        return $this->comments->count();
     }
 }
