@@ -51,34 +51,6 @@ class MessageController extends FOSRestController implements ClassResourceInterf
     }
 
     /**
-     * @param $id
-     * @return Message|null
-     */
-    private function findMessageById($id) {
-        $message = $this->messageRepo->find($id);
-        if($message === null) {
-            throw new NotFoundHttpException();
-        }
-        return $message;
-    }
-
-    /**
-     * @param Message $message
-     */
-    private function incrementViews(Message $message) {
-        $message->setViews($message->getViews()+1);
-        $this->em->persist($message);
-        $this->em->flush();
-    }
-
-    private function isPostedInLast24Hours(Message $message) {
-        $now = new \DateTime('now');
-        $dayAgo = $now->modify('-1 day');
-        $messDate = new \DateTime($message->getPostedOn());
-        return ($messDate >= $dayAgo) ? true : false;
-    }
-
-    /**
      * @param Request $request
      * @return View
      */
@@ -175,5 +147,37 @@ class MessageController extends FOSRestController implements ClassResourceInterf
         $this->em->flush();
 
         return $this->view(null, Response::HTTP_NO_CONTENT);
+    }
+
+    /**
+     * @param $id
+     * @return Message|null
+     */
+    private function findMessageById($id) {
+        $message = $this->messageRepo->find($id);
+        if($message === null) {
+            throw new NotFoundHttpException();
+        }
+        return $message;
+    }
+
+    /**
+     * @param Message $message
+     */
+    private function incrementViews(Message $message) {
+        $message->setViews($message->getViews()+1);
+        $this->em->persist($message);
+        $this->em->flush();
+    }
+
+    /**
+     * @param Message $message
+     * @return bool
+     */
+    private function isPostedInLast24Hours(Message $message) {
+        $now = new \DateTime('now');
+        $dayAgo = $now->modify('-1 day');
+        $messDate = new \DateTime($message->getPostedOn());
+        return ($messDate >= $dayAgo) ? true : false;
     }
 }
