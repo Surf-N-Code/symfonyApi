@@ -130,8 +130,7 @@ class CommentController extends FOSRestController implements ClassResourceInterf
      */
     public function getAction(string $id) {
         $comment = $this->findCommentById($id);
-        $comment->getComment();
-        return $this->view($comment);
+        return $this->view($comment->getComment());
     }
 
     /**
