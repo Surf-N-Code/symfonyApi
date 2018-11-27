@@ -22,15 +22,39 @@ class MessageRepository extends ServiceEntityRepository
      /**
       * @return Message[] Returns an array of Message objects
       */
-    public function findPostedInLast24Hours($dayAgo)
+    public function findPostedInLast24Hours()
     {
         return $this->createQueryBuilder('m')
-            ->andWhere('NOW() > :val')
-            ->setParameter('val', $dayAgo)
+            ->where('m.postedOn > :dayAgo')
+            ->setParameter('dayAgo', $this->getDayAgo())
             ->orderBy('m.postedOn', 'ASC')
             ->getQuery()
             ->getResult()
         ;
+    }
+
+    /**
+     * @return Message
+     */
+    public function findByIdAndPostedInLast24Hours($messId)
+    {
+
+        return $this->createQueryBuilder('m')
+            ->where('m.postedOn > :dayAgo')
+            ->andWhere('m.id = :messId')
+            ->setParameter('dayAgo', $this->getDayAgo())
+            ->setParameter('messId', $messId)
+            ->orderBy('m.postedOn', 'ASC')
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getResult()
+            ;
+    }
+
+    private function getDayAgo() {
+        $now = new \DateTime('now');
+        $dayAgo = $now->modify('-1 day');
+        return $dayAgo;
     }
 
     /*
