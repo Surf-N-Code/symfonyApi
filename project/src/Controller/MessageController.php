@@ -16,6 +16,8 @@ use Symfony\Component\HttpFoundation\Request;
 use FOS\RestBundle\Controller\FOSRestController;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Symfony\Component\Messenger\MessageBusInterface;
+use App\Messages\RabbitMessage;
 
 /**
  * Class MessageController
@@ -39,15 +41,25 @@ class MessageController extends FOSRestController implements ClassResourceInterf
     private $messageRepo;
 
     /**
+     * @var MessageBusInterface
+     */
+    private $messageBus;
+
+    /**
      * MessageController constructor.
      * @param EntityManagerInterface $em
      * @param LoggerInterface $logger
      * @param MessageRepository $messageRepo
      */
-    public function __construct(EntityManagerInterface $em, LoggerInterface $logger, MessageRepository $messageRepo) {
+    public function __construct(
+        EntityManagerInterface $em,
+        LoggerInterface $logger,
+        MessageRepository $messageRepo,
+        MessageBusInterface $messageBus) {
         $this->em = $em;
         $this->logger = $logger;
         $this->messageRepo = $messageRepo;
+        $this->messageBus = $messageBus;
     }
 
     /**
@@ -66,14 +78,8 @@ class MessageController extends FOSRestController implements ClassResourceInterf
             return $this->view($form);
         }
 
-        try {
-            $this->em->persist($form->getData());
-            $this->em->flush();
-        } catch(ORMException $e) {
-            $this->logger->error(
-                "Failed adding message to database". json_decode($e)
-            );
-        }
+        $message = new Message();
+        $this->messageBus->dispatch(new RabbitMessage($form->getData()));
 
         return $this->view([
             'status' => 'Message added successfully',
@@ -90,10 +96,11 @@ class MessageController extends FOSRestController implements ClassResourceInterf
      */
     public function getAction(string $id) {
 
-        $message = $this->findMessageById($id);
-        if($this->isPostedInLast24Hours($message)) {
-            $this->incrementViews($message);
+        $message = $this->messageRepo->findByIdAndPostedInLast24Hours($id);
+        if($message === null) {
+            throw new NotFoundHttpException();
         }
+        $this->incrementViews($message[0]);
 
         return $this->view(
             $message
@@ -106,12 +113,10 @@ class MessageController extends FOSRestController implements ClassResourceInterf
     public function cgetAction() {
         return $this->view(
             array_filter(
-                $this->messageRepo->findAll(),
+                $this->messageRepo->findPostedInLast24Hours(),
                 function(Message $message) {
-                    if($this->isPostedInLast24Hours($message)) {
-                        $this->incrementViews($message);
-                        return $message;
-                    }
+                    $this->incrementViews($message);
+                    return $message;
                 }
             )
         );
@@ -131,7 +136,12 @@ class MessageController extends FOSRestController implements ClassResourceInterf
             return $this->view($form);
         }
 
-        $this->em->flush();
+        try {
+            $this->em->flush();
+        } catch (ORMException $e) {
+            $this->logger("Failed patching message with ID: ".$id.". Message: ".json_encode($e));
+        }
+
 
         return $this->view(null, Response::HTTP_NO_CONTENT);
     }
@@ -143,8 +153,14 @@ class MessageController extends FOSRestController implements ClassResourceInterf
     public function deleteAction(string $id) {
         $message = $this->findMessageById($id);
 
-        $this->em->remove($message);
-        $this->em->flush();
+        //@TODO: Could also be handled in rabbit
+        try {
+            $this->em->remove($message);
+            $this->em->flush();
+        } catch (ORMException $e) {
+            $this->logger("Failed deleting message with ID: ".$id.". Message: ".json_encode($e));
+        }
+
 
         return $this->view(null, Response::HTTP_NO_CONTENT);
     }
@@ -152,6 +168,7 @@ class MessageController extends FOSRestController implements ClassResourceInterf
     /**
      * @param $id
      * @return Message|null
+     * @throws NotFoundHttpException
      */
     private function findMessageById($id) {
         $message = $this->messageRepo->find($id);
@@ -164,20 +181,14 @@ class MessageController extends FOSRestController implements ClassResourceInterf
     /**
      * @param Message $message
      */
-    private function incrementViews(Message $message) {
+    private function incrementViews($message) {
         $message->setViews($message->getViews()+1);
-        $this->em->persist($message);
-        $this->em->flush();
-    }
-
-    /**
-     * @param Message $message
-     * @return bool
-     */
-    private function isPostedInLast24Hours(Message $message) {
-        $now = new \DateTime('now');
-        $dayAgo = $now->modify('-1 day');
-        $messDate = new \DateTime($message->getPostedOn());
-        return ($messDate >= $dayAgo) ? true : false;
+        //@TODO: Could also be handled in rabbit
+        try {
+            $this->em->persist($message);
+            $this->em->flush();
+        } catch (ORMException $e) {
+            $this->logger("Failed updating views on message with ID: ".$message->getId().". Message: ".json_encode($e));
+        }
     }
 }

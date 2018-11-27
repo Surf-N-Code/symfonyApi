@@ -106,6 +106,7 @@ class CommentController extends FOSRestController implements ClassResourceInterf
         $message = $this->findMessageById($messageId);
         $message->addComment($comment);
 
+        //@TODO: Could also be handled in rabbit
         try {
             $this->em->persist($form->getData());
             $this->em->flush();
@@ -153,6 +154,7 @@ class CommentController extends FOSRestController implements ClassResourceInterf
     public function deleteAction(string $id) {
         $comment = $this->findCommentById($id);
 
+        //@TODO: Could also be handled in rabbit
         $this->em->remove($comment);
         $this->em->flush();
 
