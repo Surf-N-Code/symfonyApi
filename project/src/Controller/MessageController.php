@@ -97,9 +97,10 @@ class MessageController extends FOSRestController implements ClassResourceInterf
     public function getAction(string $id) {
 
         $message = $this->messageRepo->findByIdAndPostedInLast24Hours($id);
-        if($message === null) {
+        if($message === null || count($message) == 0) {
             throw new NotFoundHttpException();
         }
+
         $this->incrementViews($message[0]);
 
         return $this->view(
