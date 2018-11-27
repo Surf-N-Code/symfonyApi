@@ -14,4 +14,4 @@ RUN curl -sS https://getcomposer.org/installer | php && mv composer.phar /usr/lo
 COPY project/ /var/www/project
 COPY build/php-consume/ /var/www/scripts/
 WORKDIR /var/www/project/
-ENTRYPOINT ["bash", "/var/www/scripts/message_script.sh"]
+ENTRYPOINT ["bash", "/var/www/scripts/process_messages.sh"]
