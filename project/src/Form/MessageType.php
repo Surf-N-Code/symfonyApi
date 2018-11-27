@@ -18,13 +18,13 @@ class MessageType extends AbstractType
             ->add('title', TextType::class)
             ->add('content', TextType::class)
             ->add('views', NumberType::class)
-            ->add(
-                'postedOn',
-                DateTimeType::class,
-                [
-                    'format' => 'yyyy-MM-dd\'T\'HH:mm:ssZZZZZ',
-                ]
-            )
+//            ->add(
+//                'postedOn',
+//                DateTimeType::class,
+//                [
+//                    'format' => 'yyyy-MM-dd\'T\'HH:mm:ssZZZZZ',
+//                ]
+//            )
         ;
     }
 
