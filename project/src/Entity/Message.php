@@ -11,7 +11,7 @@ use Symfony\Component\Validator\Constraints as Assert;
 /**
  * @ORM\Entity(repositoryClass="App\Repository\MessageRepository")
  */
-class Message
+class Message implements \JsonSerializable
 {
     /**
      * @ORM\Id()
@@ -136,7 +136,11 @@ class Message
      */
     public function getPostedOn()
     {
-        return $this->postedOn->format(\DATE_ATOM);
+        if($this->postedOn instanceof \DateTime) {
+            return $this->postedOn->format(\DATE_ATOM);
+        } else {
+            return $this->postedOn;
+        }
     }
 
     /**
@@ -191,5 +195,16 @@ class Message
      */
     public function getCommentCount() {
         return $this->comments->count();
+    }
+
+    public function jsonSerialize()
+    {
+        return array(
+            'id' => $this->id,
+            'title'=> $this->title,
+            'content'=> $this->content,
+            'views'=> $this->views,
+            'postedOn'=> $this->postedOn,
+        );
     }
 }
